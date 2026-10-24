@@ -48,9 +48,9 @@
     width:120px;height:120px;border-radius:50%;margin:22px auto 26px;
     background:radial-gradient(circle at 35% 30%, #9BDCC7, var(--teal) 75%);
     box-shadow:0 12px 40px rgba(30,110,103,.28);
-    animation:breathe 7s ease-in-out infinite;
+    animation:breathe 4.5s ease-in-out infinite;
   }
-  @keyframes breathe{0%,100%{transform:scale(1);}45%{transform:scale(1.08);}60%{transform:scale(1.08);}}
+  @keyframes breathe{0%,100%{transform:scale(.88);box-shadow:0 8px 24px rgba(30,110,103,.18);}45%,55%{transform:scale(1.14);box-shadow:0 16px 56px rgba(30,110,103,.38);}}
 
   .btn{appearance:none;border:none;cursor:pointer;font-family:var(--sans);font-size:17px;font-weight:600;
     padding:16px 18px;border-radius:15px;width:100%;background:var(--teal);color:#fff;transition:background .15s,transform .05s;}
@@ -88,6 +88,11 @@
 
   ul.consent{margin:6px 0 0;padding-left:18px;font-size:14px;}
   ul.consent li{margin:6px 0;}
+  .fbq{font-size:14px;font-weight:600;margin:14px 0 8px;}
+  .fbq:first-of-type{margin-top:4px;}
+  .fbopts{display:flex;gap:8px;}
+  .fbopts .opt{flex:1;text-align:center;padding:10px 4px;border:1.5px solid var(--line);border-radius:12px;font-size:13.5px;cursor:pointer;background:#fff;}
+  .fbopts .opt.sel{border-color:var(--teal);background:var(--mint);font-weight:600;}
   .err{color:var(--red);font-size:13px;margin-top:8px;min-height:18px;}
 
   /* progress */
@@ -215,6 +220,7 @@
         <li>Results are linked only to your access code, never your name or email.</li>
         <li>Data is used solely to test and improve Riki.</li>
         <li>You can stop at any time, and ask for your data to be deleted.</li>
+        <li>Your scores and trend are saved on this device only. Using a different phone or browser starts fresh, and your history won't carry over.</li>
       </ul>
     </div>
     <div class="card">
@@ -272,7 +278,7 @@
       <div class="chips" id="ci-symp"></div>
       <div id="ci-profile"></div>
     </div>
-    <div class="stack"><button class="btn" onclick="saveCheckin()">Continue</button></div>
+    <div class="stack"><button class="btn" onclick="saveCheckin()">Continue</button><button class="btn ghost" onclick="goHome()">Back</button></div>
   </section>
 
   <!-- READY -->
@@ -283,6 +289,7 @@
     <div class="stack">
       <button class="btn" onclick="beginBattery()">Begin</button>
       <button class="btn ghost" id="ready-trend" onclick="openHistory('s-ready')">View my trend</button>
+      <button class="btn ghost" onclick="readyBack()">Back</button>
     </div>
   </section>
 
@@ -292,7 +299,7 @@
     <p class="lede" id="instr-eyebrow" style="margin-bottom:6px;font-weight:600;color:var(--teal);"></p>
     <h2 id="instr-title"></h2>
     <div class="card" id="instr-body" style="margin-top:10px;"></div>
-    <div class="stack"><button class="btn" onclick="beginTask()">I'm ready, start</button></div>
+    <div class="stack"><button class="btn" onclick="beginTask()">I'm ready, start</button><button class="btn ghost" id="instr-back" onclick="show('s-ready')">Back</button></div>
   </section>
 
   <!-- TASK -->
@@ -377,6 +384,7 @@ const TESTNAME = {pvt:"Reaction dot", sdmt:"Symbol match", stroop:"Colour and wo
 const TESTDUR = {pvt:"60s", sdmt:"60s", stroop:"60s", nback:"~75s", gng:"60s"};
 
 let taskIndex = 0;
+let lastRecord = null;
 let session = {};          // {ts, checkin, metrics:{}, raw scores}
 let storeOK = true;
 let memHist = [], memProfile = null;
@@ -415,23 +423,23 @@ const store = {
   }
 };
 async function loadHist(){
-  const v = await store.get("riki2_history");
+  const v = await store.get("rikid_history");
   if(v != null){ try{ return JSON.parse(v); }catch(e){} }
   return memHist.slice();
 }
 async function saveHist(arr){
   memHist = arr.slice();
-  const ok = await store.set("riki2_history", JSON.stringify(arr.slice(-150)));
+  const ok = await store.set("rikid_history", JSON.stringify(arr.slice(-150)));
   if(!ok) storeOK=false;
 }
 async function loadProfile(){
-  const v = await store.get("riki2_profile");
+  const v = await store.get("rikid_profile");
   if(v != null){ try{ return JSON.parse(v); }catch(e){} }
   return memProfile;
 }
 async function saveProfile(p){
   memProfile = p;
-  await store.set("riki2_profile", JSON.stringify(p));
+  await store.set("rikid_profile", JSON.stringify(p));
 }
 function within14d(arr){
   const cut = Date.now() - CFG.BASE.WINDOW_DAYS*86400000;
@@ -466,16 +474,15 @@ async function refreshHome(){
     <div class="stat"><span>Full checks</span><span>${pip(fullN,CFG.PLAN.FULL_PER_DAY)} <span class="v" style="color:var(--muted)">${fullN} of ${CFG.PLAN.FULL_PER_DAY}</span></span></div>
     <div class="stat"><span>Quick checks</span><span>${pip(quickN,CFG.PLAN.QUICK_PER_DAY)} <span class="v" style="color:var(--muted)">${quickN} of ${CFG.PLAN.QUICK_PER_DAY}</span></span></div>
     <div class="note">A spread of checks across a shift keeps the picture meaningful. This is a guide many teams find works, not a rule, and workplaces can set their own.</div></div>`;
-  $("demo-link").style.display = all.length < CFG.BASE.MIN_SESS ? "block":"none";
 }
 
 /* ---------- flow ---------- */
 async function loadRot(){
-  const v = await store.get("riki2_rot");
+  const v = await store.get("rikid_rot");
   if(v){ try{ return JSON.parse(v); }catch(e){} }
   return {full:0, quick:0};
 }
-async function saveRot(r){ await store.set("riki2_rot", JSON.stringify(r)); }
+async function saveRot(r){ await store.set("rikid_rot", JSON.stringify(r)); }
 
 /* PVT always runs as the anchor test. In a full check the other three slots
    come from the rotation pool with one game sitting out each time; in a
@@ -505,12 +512,7 @@ async function buildCheckin(){
   chips.querySelectorAll(".chip").forEach(c=>c.onclick=()=>c.classList.toggle("sel"));
   const br = $("ci-broken");
   br.querySelectorAll(".opt").forEach(o=>o.onclick=()=>{ br.querySelectorAll(".opt").forEach(x=>x.classList.remove("sel")); o.classList.add("sel"); });
-  const prof = await loadProfile();
-  $("ci-profile").innerHTML = prof ? "" : `
-    <label class="f">Your age <small>(asked once)</small></label>
-    <input type="number" id="ci-age" min="16" max="90" placeholder="e.g. 28">
-    <label class="f">Gender <small>(asked once)</small></label>
-    <select id="ci-gender"><option value="">Prefer not to say</option><option>Male</option><option>Female</option><option>Non-binary</option></select>`;
+  $("ci-profile").innerHTML = "";
 }
 async function saveCheckin(){
   const broken = $("ci-broken").querySelector(".sel");
@@ -549,6 +551,7 @@ function fillReady(){
   }
   $("ready-body").innerHTML = html;
 }
+function readyBack(){ if(session.type==="full") show("s-checkin"); else goHome(); }
 function beginBattery(){
   if(session.type==="quick"){
     const s=$("q-fat");
@@ -587,6 +590,7 @@ function showInstr(){
   $("instr-eyebrow").textContent = `Task ${taskIndex+1} of ${session.tasks.length} . ${TESTNAME[t]}`;
   $("instr-title").textContent = INSTR[t].title;
   $("instr-body").innerHTML = INSTR[t].body;
+  $("instr-back").style.display = taskIndex===0 ? "block" : "none";
   show("s-instr");
 }
 function beginTask(){
@@ -1122,6 +1126,7 @@ async function finishSession(){
     scores: session.scores, metrics: session.metrics, checkin: session.checkin
   };
   await saveHist(history.concat([record]));
+  lastRecord = record;
   const rot = await loadRot();
   rot[session.type==="quick"?"quick":"full"]++;
   await saveRot(rot);
@@ -1261,7 +1266,23 @@ function renderResults(res){
   // trend
   html += `<div class="chartbox"><svg id="chart-r" viewBox="0 0 420 190" width="100%"></svg></div>`;
 
+  // optional feedback
+  html += `<div class="card" id="fb-card"><h3>Optional: help us improve Riki</h3>
+    <div class="note" style="margin-top:0;">Completely optional. Answer either, both or neither.</div>
+    <div class="fbq">Does this score match how you feel right now?</div>
+    <div class="fbopts" data-q="feel"><div class="opt" data-v="right">Feels right</div><div class="opt" data-v="too_high">Seems too high</div><div class="opt" data-v="too_low">Seems too low</div></div>
+    <div class="fbq">Have you made any mistake today, even a small one?</div>
+    <div class="fbopts" data-q="mistake"><div class="opt" data-v="yes">Yes</div><div class="opt" data-v="no">No</div></div>
+    <div class="note" id="fb-thanks" style="display:none;color:var(--teal);">Thanks, that really helps.</div></div>`;
+
   $("results-body").innerHTML = html;
+  $("results-body").querySelectorAll(".fbopts").forEach(grp=>{
+    grp.querySelectorAll(".opt").forEach(o=>o.onclick=()=>{
+      grp.querySelectorAll(".opt").forEach(x=>x.classList.remove("sel"));
+      o.classList.add("sel");
+      saveFeedback(grp.dataset.q, o.dataset.v);
+    });
+  });
   loadHist().then(all=>drawChart(within14d(all), "chart-r"));
 
   // breathing button on lower bands only, always optional
@@ -1409,7 +1430,7 @@ async function exportData(){
 async function resetData(){
   if(!confirm("Delete all stored checks and your baseline? This cannot be undone.")) return;
   memHist=[];
-  await store.del("riki2_history");
+  await store.del("rikid_history");
   renderHistory(); refreshHome();
 }
 
@@ -1419,10 +1440,10 @@ async function resetData(){
 const SYNC_URL = "https://script.google.com/macros/s/AKfycbyIgCLwwC5j9qOjD-HUZ1QGYZCDW5GmzmeFwaJcTTcWyL-J1hsP9-0Xpbj94MlgcahT/exec";
 /* Codes you hand out. Anything not in this list is rejected. */
 const ACCESS_CODES = ["BHAV-01","RIKI-02","RIKI-03","RIKI-04","RIKI-05","CIAN-TEST"];
-const CONSENT_VERSION = "1";
+const CONSENT_VERSION = "2";
 
 async function getTester(){
-  const v = await store.get("riki2_tester");
+  const v = await store.get("rikid_tester");
   if(v){ try{ return JSON.parse(v); }catch(e){} }
   return null;
 }
@@ -1430,14 +1451,14 @@ async function submitCode(){
   const code = ($("ac-code").value||"").trim().toUpperCase();
   if(!ACCESS_CODES.includes(code)){ $("ac-err").textContent = "That code isn't recognised. Check it and try again."; return; }
   $("ac-err").textContent = "";
-  await store.set("riki2_tester", JSON.stringify({code, consent:null}));
+  await store.set("rikid_tester", JSON.stringify({code, consent:null}));
   show("s-consent");
 }
 async function acceptConsent(){
   const t = await getTester();
   if(!t){ show("s-access"); return; }
   t.consent = { version:CONSENT_VERSION, ts:Date.now() };
-  await store.set("riki2_tester", JSON.stringify(t));
+  await store.set("rikid_tester", JSON.stringify(t));
   goHome();
 }
 
@@ -1447,7 +1468,7 @@ function rowFor(rec, code){
   const m = rec.metrics||{}, sc = rec.scores||{}, ci = rec.checkin||{};
   const g = (o,k)=> o && o[k]!=null ? o[k] : "";
   return {
-    code, ts:new Date(rec.ts).toISOString(), type:rec.type, mode:rec.mode,
+    kind:"check", code, check_id:rec.ts, ts:new Date(rec.ts).toISOString(), type:rec.type, mode:rec.mode,
     overall:rec.overall, band:rec.band,
     pvt:g(sc,"pvt"), sdmt:g(sc,"sdmt"), stroop:g(sc,"stroop"), nback:g(sc,"nback"), gng:g(sc,"gng"), stability:g(sc,"stability"),
     pvt_median:g(m.pvt,"median"), pvt_lapses:g(m.pvt,"lapses"), pvt_falseStarts:g(m.pvt,"falseStarts"),
@@ -1461,8 +1482,8 @@ function rowFor(rec, code){
     device:navigator.userAgent.slice(0,120)
   };
 }
-async function loadQueue(){ const v=await store.get("riki2_queue"); try{ return v?JSON.parse(v):[]; }catch(e){ return []; } }
-async function saveQueue(q){ await store.set("riki2_queue", JSON.stringify(q.slice(-200))); }
+async function loadQueue(){ const v=await store.get("rikid_queue"); try{ return v?JSON.parse(v):[]; }catch(e){ return []; } }
+async function saveQueue(q){ await store.set("rikid_queue", JSON.stringify(q.slice(-200))); }
 async function sendRow(row){
   /* text/plain + no-cors avoids the CORS preflight Apps Script can't answer.
      The response is opaque, so a resolved fetch is treated as sent. */
@@ -1486,6 +1507,26 @@ async function syncRecord(rec){
   await flushQueue();
 }
 
+/* Feedback is saved onto the check locally and sent as its own row,
+   keyed by code + check time, so the sheet updates it if answers change. */
+async function saveFeedback(q, v){
+  if(!lastRecord) return;
+  lastRecord.feedback = Object.assign({}, lastRecord.feedback, {[q]:v});
+  const all = await loadHist();
+  const i = all.findIndex(r=>r.ts===lastRecord.ts);
+  if(i>=0){ all[i].feedback = lastRecord.feedback; await saveHist(all); }
+  $("fb-thanks").style.display = "block";
+  if(!SYNC_URL) return;
+  const t = await getTester(); if(!t) return;
+  const fb = lastRecord.feedback;
+  const q2 = await loadQueue();
+  q2.push({ kind:"feedback", code:t.code, check_id:lastRecord.ts, check_ts:new Date(lastRecord.ts).toISOString(),
+    type:lastRecord.type, overall:lastRecord.overall, band:lastRecord.band,
+    feel:fb.feel||"", mistake:fb.mistake||"" });
+  await saveQueue(q2);
+  await flushQueue();
+}
+
 /* ---------- boot ---------- */
 /* iOS Safari only applies :active press states once a touchstart
    listener exists anywhere on the page. This empty listener is the
@@ -1496,8 +1537,7 @@ document.querySelectorAll(".js-logo").forEach(im=>{ const m=$("logo-main"); if(m
 (async function boot(){
   const t = await getTester();
   if(!t) show("s-access");
-  else if(!t.consent || t.consent.version!==CONSENT_VERSION) show("s-consent");
-  else { goHome(); flushQueue(); }
+  else { show("s-consent"); flushQueue(); }
 })();
 </script>
 </body>
