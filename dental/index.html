@@ -142,6 +142,33 @@
   .st-pad{position:absolute;bottom:16px;left:16px;right:16px;display:grid;grid-template-columns:repeat(2,1fr);gap:10px;}
   .st-pad button{font-size:16px;font-weight:700;padding:18px 0;border-radius:13px;border:none;color:#fff;cursor:pointer;letter-spacing:.5px;}
   .st-pad button:active{filter:brightness(1.15);}
+  .st-pad button{position:relative;}
+  .st-pad button.fb-ok{box-shadow:0 0 0 4px #fff,0 0 0 7px var(--green);}
+  .st-pad button.fb-no{box-shadow:0 0 0 4px #fff,0 0 0 7px var(--red);animation:stshake .22s ease;}
+  .st-pad button.fb-ok::after,.st-pad button.fb-no::after{position:absolute;top:4px;right:10px;font-size:15px;}
+  .st-pad button.fb-ok::after{content:"\2713";}
+  .st-pad button.fb-no::after{content:"\2715";}
+  @keyframes stshake{0%,100%{transform:translateX(0);}25%{transform:translateX(-5px);}75%{transform:translateX(5px);}}
+
+  /* next check timer */
+  .nextchk{display:flex;align-items:center;justify-content:center;gap:8px;margin:0 auto 12px;padding:7px 14px;border-radius:999px;font-size:13.5px;font-weight:600;width:fit-content;border:1.5px solid transparent;}
+  .nextchk i{width:8px;height:8px;border-radius:50%;display:inline-block;}
+  .nextchk.ok{background:#E8F4EA;color:#22622a;border-color:#BFDDC4;}
+  .nextchk.ok i{background:var(--green);}
+  .nextchk.due{background:#FBE9E7;color:#a31f1f;border-color:#F2C1BB;}
+  .nextchk.due i{background:var(--red);animation:pulse 1.4s ease-in-out infinite;}
+  .nextchk.idle{background:#fff;color:var(--muted);border-color:var(--line);}
+  .nextchk.idle i{background:var(--teal);}
+  @keyframes pulse{0%,100%{opacity:1;}50%{opacity:.3;}}
+
+  /* trend view toggle */
+  .segtog{display:flex;background:#fff;border:1.5px solid var(--line);border-radius:12px;padding:3px;margin:12px 0 4px;}
+  .segtog button{flex:1;border:none;background:none;padding:9px 0;border-radius:9px;font-size:14px;font-weight:600;color:var(--muted);cursor:pointer;font-family:inherit;}
+  .segtog button.on{background:var(--mint);color:var(--teal);}
+  .daynav{display:flex;align-items:center;justify-content:space-between;margin:8px 0 2px;}
+  .daynav button{border:1.5px solid var(--line);background:#fff;width:38px;height:34px;border-radius:10px;font-size:17px;cursor:pointer;color:var(--teal);}
+  .daynav button:disabled{opacity:.3;cursor:default;}
+  .daynav strong{font-size:15px;}
 
   /* results */
   .scorehead{text-align:center;padding:28px 18px 24px;border-radius:var(--radius);color:#fff;margin-bottom:12px;}
@@ -241,6 +268,7 @@
     <div class="orb"></div>
     <h1 style="text-align:center;margin-top:0;">How are you running today?</h1>
     <p class="lede" style="text-align:center;">A full check runs four short games, a quick check just two. Riki compares today with your own usual rhythm, nothing else.</p>
+    <div id="next-check"></div>
     <div id="home-status"></div>
     <div class="stack">
       <button class="btn" onclick="startFlow('full')">Full check <span style="font-weight:400;opacity:.85;">· about 4 min</span></button>
@@ -322,7 +350,9 @@
   <!-- HISTORY -->
   <section class="screen" id="s-history">
     <div class="brandbar"><img class="logo-sm js-logo" alt="Riki"><span class="brandname"><small>your trend</small></span></div>
-    <h2 style="margin-top:16px;">The last two weeks</h2>
+    <div class="segtog"><button id="tv-range" class="on" onclick="setTrendView('range')">Two weeks</button><button id="tv-day" onclick="setTrendView('day')">By day</button></div>
+    <div class="daynav" id="daynav" style="display:none;"><button id="dn-prev" onclick="stepDay(-1)">&#8249;</button><strong id="dn-label"></strong><button id="dn-next" onclick="stepDay(1)">&#8250;</button></div>
+    <h2 style="margin-top:10px;" id="trend-title">The last two weeks</h2>
     <p class="lede" id="trend-summary"></p>
     <div class="chartbox">
       <svg id="chart" viewBox="0 0 420 190" width="100%"></svg>
@@ -332,7 +362,7 @@
         <span><i style="background:var(--amberred)"></i>Under</span>
         <span><i style="background:var(--red)"></i>Well under</span>
       </div>
-      <div class="note" style="text-align:center;margin-top:6px;">Smaller hollow dots are quick checks.</div>
+      <div class="note" style="text-align:center;margin-top:6px;" id="chart-note">Big dots are your daily average. Small faint dots are each check that day.</div>
     </div>
     <div class="card" style="padding:4px 12px;">
       <table class="log"><thead><tr><th></th><th>When</th><th>Score</th><th>React</th><th>Symbols</th><th>Memory</th></tr></thead>
@@ -371,7 +401,9 @@ const CFG = {
   NB:  { TRIALS:30, ON:500, ISI:2000, TARGET_RATE:0.30, MIN_ROUNDS:20 },
   GNG: { GO_RATE:0.75, STIM_MS:1000, ISI_MIN:500, ISI_MAX:1100, MIN_TRIALS:20 },
   BASE:{ MIN_SESS:4, WINDOW_DAYS:14, SD_FLOOR:5, CENTRE:75, SLOPE:12 },
-  PLAN:{ FULL_PER_DAY:2, QUICK_PER_DAY:3 },
+  PLAN:{ FULL_PER_DAY:2, QUICK_PER_DAY:3,
+         GAP_AFTER_FULL_MIN:150, GAP_AFTER_QUICK_MIN:90,  /* suggested wait before the next check */
+         OVERDUE_CAP_MIN:180 },                          /* past this, stop counting (they've likely finished for the day) */
   W:   { pvt:0.34, sdmt:0.17, stroop:0.17, nback:0.17, gng:0.17, stability:0.15 }
 };
 const STAB_ANCHORS = {
@@ -448,9 +480,38 @@ function within14d(arr){
 
 /* ---------- navigation ---------- */
 function show(id){ document.querySelectorAll(".screen").forEach(s=>s.classList.remove("on")); $(id).classList.add("on"); window.scrollTo(0,0); }
-function goHome(){ show("s-home"); refreshHome(); }
+function goHome(){ show("s-home"); refreshHome(); renderNextCheck(); clearInterval(nextTimer); nextTimer = setInterval(()=>{ if($("s-home").classList.contains("on")) renderNextCheck(); }, 30000); }
 let histReturn = "s-home";
-function openHistory(from){ histReturn = from||"s-home"; renderHistory(); show("s-history"); $("hist-back").onclick = ()=>{ if(histReturn==="s-home") goHome(); else show(histReturn); }; }
+let nextTimer = 0;
+function fmtDur(ms){
+  const m = Math.max(0, Math.round(ms/60000));
+  if(m < 60) return m+" min";
+  const h = Math.floor(m/60), r = m%60;
+  return r ? `${h}h ${r}m` : `${h}h`;
+}
+/* Suggests the next check from the day's plan.
+   Waits longer after a full check than a quick one. Green while counting down,
+   red once due, then goes neutral after OVERDUE_CAP_MIN so it isn't red all evening. */
+async function renderNextCheck(){
+  const el = $("next-check"); if(!el) return;
+  const all = await loadHist();
+  const P = CFG.PLAN;
+  const midnight = new Date(); midnight.setHours(0,0,0,0);
+  const today = all.filter(s=>s.ts>=midnight.getTime());
+  const fullLeft = Math.max(0, P.FULL_PER_DAY - today.filter(s=>(s.type||"full")==="full").length);
+  const quickLeft = Math.max(0, P.QUICK_PER_DAY - today.filter(s=>s.type==="quick").length);
+  if(!today.length){ el.innerHTML = `<div class="nextchk idle"><i></i>Ready for your first check of the day</div>`; return; }
+  if(!fullLeft && !quickLeft){ el.innerHTML = `<div class="nextchk idle"><i></i>All of today's checks done</div>`; return; }
+  const last = today[today.length-1];
+  const gap = ((last.type||"full")==="full" ? P.GAP_AFTER_FULL_MIN : P.GAP_AFTER_QUICK_MIN) * 60000;
+  const nextType = fullLeft >= quickLeft ? (fullLeft ? "full" : "quick") : "quick";
+  const label = nextType==="full" ? "full check" : "quick check";
+  const diff = last.ts + gap - Date.now();
+  if(diff > 0) el.innerHTML = `<div class="nextchk ok"><i></i>Next ${label} in ${fmtDur(diff)}</div>`;
+  else if(-diff <= P.OVERDUE_CAP_MIN*60000) el.innerHTML = `<div class="nextchk due"><i></i>Next ${label} due ${fmtDur(-diff)} ago</div>`;
+  else el.innerHTML = `<div class="nextchk idle"><i></i>Next ${label} whenever you're ready</div>`;
+}
+function openHistory(from){ histReturn = from||"s-home"; trendView="range"; dayOffset=0; renderHistory(); show("s-history"); $("hist-back").onclick = ()=>{ if(histReturn==="s-home") goHome(); else show(histReturn); }; }
 
 async function refreshHome(){
   const all = await loadHist();
@@ -808,9 +869,15 @@ function runStroop(){
     w.style.color = ST_COLORS[inkIdx].hex;
     trialStart = performance.now();
   }
-  function answer(i){
+  let fbT=0;
+  function answer(i, btn){
     if(ended) return;
-    trials.push({ rt:performance.now()-trialStart, ok:i===inkIdx, congruent });
+    const ok = i===inkIdx;
+    trials.push({ rt:performance.now()-trialStart, ok, congruent });
+    // brief tick/cross on the tapped colour so new users can see what's right
+    $("st-pad").querySelectorAll("button").forEach(b=>b.classList.remove("fb-ok","fb-no"));
+    if(btn){ void btn.offsetWidth; btn.classList.add(ok?"fb-ok":"fb-no"); }
+    clearTimeout(fbT); fbT=setTimeout(()=>{ if(btn) btn.classList.remove("fb-ok","fb-no"); }, 320);
     nextTrial();
   }
   function tick(){
@@ -819,7 +886,7 @@ function runStroop(){
     if(left<=0){ end(); return; }
     raf=requestAnimationFrame(tick);
   }
-  function onPad(e){ const b=e.target.closest("button[data-i]"); if(b) answer(parseInt(b.dataset.i,10)); }
+  function onPad(e){ const b=e.target.closest("button[data-i]"); if(b) answer(parseInt(b.dataset.i,10), b); }
   function end(){
     if(ended) return; ended=true;
     cancelAnimationFrame(raf);
@@ -1319,15 +1386,36 @@ function stopBreathing(){
 /* =====================================================================
    HISTORY + CHART
    ===================================================================== */
+let trendView = "range", dayOffset = 0;
+function setTrendView(v){ trendView = v; dayOffset = 0; renderHistory(); }
+function stepDay(d){ dayOffset = Math.min(0, Math.max(-(CFG.BASE.WINDOW_DAYS-1), dayOffset+d)); renderHistory(); }
+function dayBounds(off){ const a=new Date(); a.setHours(12,0,0,0); a.setDate(a.getDate()+off); a.setHours(0,0,0,0); const b=new Date(a); b.setHours(12,0,0,0); b.setDate(b.getDate()+1); b.setHours(0,0,0,0); return [a.getTime(), b.getTime()]; }
 async function renderHistory(){
   const all = await loadHist();
   const recent = within14d(all);
-  drawChart(recent, "chart");
+  $("tv-range").classList.toggle("on", trendView==="range");
+  $("tv-day").classList.toggle("on", trendView==="day");
+  $("daynav").style.display = trendView==="day" ? "flex" : "none";
+  let rows = all;
+  if(trendView==="day"){
+    const [a,b] = dayBounds(dayOffset);
+    rows = all.filter(s=>s.ts>=a && s.ts<b);
+    $("dn-label").textContent = dayOffset===0 ? "Today" : dayOffset===-1 ? "Yesterday" : new Date(a).toLocaleDateString([],{weekday:"short",day:"numeric",month:"short"});
+    $("dn-prev").disabled = dayOffset <= -(CFG.BASE.WINDOW_DAYS-1);
+    $("dn-next").disabled = dayOffset >= 0;
+    $("trend-title").textContent = "Across the day";
+    $("chart-note").textContent = "Smaller hollow dots are quick checks.";
+    drawDayChart(rows, "chart", a);
+  } else {
+    $("trend-title").textContent = "The last two weeks";
+    $("chart-note").textContent = "Big dots are your daily average. Small faint dots are each check that day.";
+    drawChart(recent, "chart");
+  }
   const body=$("log-body"), empty=$("log-empty");
-  if(!all.length){ body.innerHTML=""; empty.style.display="block"; }
+  if(!rows.length){ body.innerHTML=""; empty.style.display="block"; empty.textContent = trendView==="day" ? "No checks on this day." : "No checks yet. Your first one starts your story."; }
   else{
     empty.style.display="none";
-    body.innerHTML = all.slice().reverse().slice(0,12).map(s=>{
+    body.innerHTML = rows.slice().reverse().slice(0, trendView==="day" ? 50 : 12).map(s=>{
       const c = BAND_HEX[s.band]||"var(--muted)";
       const m=s.metrics||{};
       return `<tr><td><span class="pill" style="background:${c}"></span></td>
@@ -1339,6 +1427,13 @@ async function renderHistory(){
     }).join("");
   }
   const sum=$("trend-summary");
+  if(trendView==="day"){
+    const sc = rows.map(s=>s.overall).filter(v=>v!=null);
+    if(!sc.length) sum.textContent = "Pick a day with the arrows to see how your checks went across it.";
+    else if(sc.length===1) sum.textContent = `One check on this day, scoring ${sc[0]}.`;
+    else sum.textContent = `${sc.length} checks on this day. Highest ${Math.max(...sc)}, lowest ${Math.min(...sc)}, average ${Math.round(mean(sc))}.`;
+    return;
+  }
   if(recent.length<2){ sum.textContent="A few more checks and this becomes a picture of your fortnight."; }
   else{
     const scores=recent.map(s=>s.overall).filter(v=>v!=null);
@@ -1366,23 +1461,69 @@ function drawChart(entries, svgId){
     const med = median(pts.map(p=>p.overall));
     g+=`<line x1="${x0}" y1="${yPx(med)}" x2="${x1}" y2="${yPx(med)}" stroke="#1E6E67" stroke-width="1.4" stroke-dasharray="5 4" opacity=".55"/>`;
     g+=`<text x="${x1}" y="${yPx(med)-4}" font-size="9" fill="#1E6E67" text-anchor="end">your usual</text>`;
+    const COL = {green:"#2e7d32",amber:"#f9a825",amberred:"#e65100",red:"#c62828"};
+    // group checks by calendar day; plot each day's average at midday
+    const days = {};
+    pts.forEach(p=>{ const d=new Date(p.ts); d.setHours(0,0,0,0); (days[d.getTime()] = days[d.getTime()]||[]).push(p); });
+    const avgs = Object.keys(days).map(Number).sort((a,b)=>a-b).map(d=>{
+      const list = days[d], v = Math.round(mean(list.map(p=>p.overall)));
+      return { ts:new Date(d).setHours(12,0,0,0), day:d, overall:v, n:list.length, band:bandOf(v, list[list.length-1].mode) };
+    });
+    // faint individual checks behind
+    pts.forEach(p=>{
+      g+=`<circle cx="${xFor(p.ts).toFixed(1)}" cy="${yPx(p.overall).toFixed(1)}" r="2.4" fill="${COL[p.band]||"#5F7470"}" opacity=".32"/>`;
+    });
+    let path="";
+    avgs.forEach((p,i)=>{ path+=(i?"L":"M")+xFor(p.ts).toFixed(1)+" "+yPx(p.overall).toFixed(1)+" "; });
+    g+=`<path d="${path}" fill="none" stroke="#1E6E67" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round" opacity=".85"/>`;
+    avgs.forEach(p=>{
+      g+=`<circle cx="${xFor(p.ts).toFixed(1)}" cy="${yPx(p.overall).toFixed(1)}" r="4.5" fill="${COL[p.band]||"#5F7470"}" stroke="#fff" stroke-width="1.5"><title>${new Date(p.day).toLocaleDateString()} · average ${p.overall} from ${p.n} check${p.n>1?"s":""}</title></circle>`;
+    });
+    // date labels: first and last day
+    const f=avgs[0], l=avgs[avgs.length-1];
+    const lbl = ts => new Date(ts).toLocaleDateString([],{day:"numeric",month:"short"});
+    g+=`<text x="${xFor(f.ts)}" y="${H-8}" font-size="9" fill="#5F7470" text-anchor="middle">${lbl(f.day)}</text>`;
+    if(avgs.length>1) g+=`<text x="${xFor(l.ts)}" y="${H-8}" font-size="9" fill="#5F7470" text-anchor="middle">${lbl(l.day)}</text>`;
+  } else {
+    g+=`<text x="${W/2}" y="${H/2}" font-size="12" fill="#5F7470" text-anchor="middle">No checks in the last two weeks yet</text>`;
+  }
+  svg.innerHTML=g;
+}
+
+function clockHour(ts){ const d=new Date(ts); return d.getHours()+d.getMinutes()/60+d.getSeconds()/3600; }
+function drawDayChart(entries, svgId, dayStart){
+  const svg=$(svgId); if(!svg) return;
+  const W=420,H=190,padL=30,padR=12,padT=12,padB=26;
+  const x0=padL,x1=W-padR,y1=H-padB,y0=padT;
+  const yPx=v=> y1-(v/100)*(y1-y0);
+  let g="";
+  [0,25,50,75,100].forEach(v=>{
+    g+=`<line x1="${x0}" y1="${yPx(v)}" x2="${x1}" y2="${yPx(v)}" stroke="#E3EBE6" stroke-width="1"/>`;
+    g+=`<text x="${x0-6}" y="${yPx(v)+3}" font-size="9" fill="#5F7470" text-anchor="end">${v}</text>`;
+  });
+  const pts = entries.filter(e=>e.overall!=null);
+  // axis runs 08:00-18:00 by default, widened to fit any earlier or later checks
+  let h0=8, h1=18;
+  pts.forEach(p=>{ const h=clockHour(p.ts); h0=Math.min(h0,Math.floor(h)); h1=Math.max(h1,Math.ceil(h)); });
+  if((h1-h0)%2) h1=Math.min(24,h1+1);
+  const xFor = ts => x0 + ((clockHour(ts) - h0)/(h1-h0))*(x1-x0);
+  const step = (h1-h0)>12 ? 4 : 2;
+  for(let h=h0; h<=h1; h+=step){
+    const x = x0 + ((h-h0)/(h1-h0))*(x1-x0);
+    g+=`<text x="${x}" y="${H-8}" font-size="9" fill="#5F7470" text-anchor="middle">${String(h%24).padStart(2,"0")}:00</text>`;
+  }
+  if(pts.length){
+    const COL = {green:"#2e7d32",amber:"#f9a825",amberred:"#e65100",red:"#c62828"};
     let path="";
     pts.forEach((p,i)=>{ path+=(i?"L":"M")+xFor(p.ts).toFixed(1)+" "+yPx(p.overall).toFixed(1)+" "; });
     g+=`<path d="${path}" fill="none" stroke="#1E6E67" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round" opacity=".85"/>`;
     pts.forEach(p=>{
-      const col = {green:"#2e7d32",amber:"#f9a825",amberred:"#e65100",red:"#c62828"}[p.band]||"#5F7470";
-      if(p.type==="quick"){
-        g+=`<circle cx="${xFor(p.ts).toFixed(1)}" cy="${yPx(p.overall).toFixed(1)}" r="3" fill="#fff" stroke="${col}" stroke-width="2"><title>${new Date(p.ts).toLocaleDateString()} · ${p.overall} (quick)</title></circle>`;
-      } else {
-        g+=`<circle cx="${xFor(p.ts).toFixed(1)}" cy="${yPx(p.overall).toFixed(1)}" r="4" fill="${col}" stroke="#fff" stroke-width="1.5"><title>${new Date(p.ts).toLocaleDateString()} · ${p.overall}</title></circle>`;
-      }
+      const col = COL[p.band]||"#5F7470", t = new Date(p.ts).toLocaleTimeString([],{hour:"2-digit",minute:"2-digit"});
+      if(p.type==="quick") g+=`<circle cx="${xFor(p.ts).toFixed(1)}" cy="${yPx(p.overall).toFixed(1)}" r="3.5" fill="#fff" stroke="${col}" stroke-width="2"><title>${t} · ${p.overall} (quick)</title></circle>`;
+      else g+=`<circle cx="${xFor(p.ts).toFixed(1)}" cy="${yPx(p.overall).toFixed(1)}" r="4.5" fill="${col}" stroke="#fff" stroke-width="1.5"><title>${t} · ${p.overall}</title></circle>`;
     });
-    // date labels: first and last
-    const f=pts[0], l=pts[pts.length-1];
-    g+=`<text x="${xFor(f.ts)}" y="${H-8}" font-size="9" fill="#5F7470" text-anchor="middle">${new Date(f.ts).toLocaleDateString([],{day:"numeric",month:"short"})}</text>`;
-    if(pts.length>1) g+=`<text x="${xFor(l.ts)}" y="${H-8}" font-size="9" fill="#5F7470" text-anchor="middle">${new Date(l.ts).toLocaleDateString([],{day:"numeric",month:"short"})}</text>`;
   } else {
-    g+=`<text x="${W/2}" y="${H/2}" font-size="12" fill="#5F7470" text-anchor="middle">No checks in the last two weeks yet</text>`;
+    g+=`<text x="${W/2}" y="${H/2}" font-size="12" fill="#5F7470" text-anchor="middle">No checks on this day</text>`;
   }
   svg.innerHTML=g;
 }
