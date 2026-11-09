@@ -4,6 +4,9 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>Riki Wellness Check</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
   :root{
     --bg:#F4F9F6;
@@ -22,8 +25,8 @@
     --red:#c62828;
     --radius:18px;
     --mono:ui-monospace,"SF Mono",Menlo,Consolas,"Roboto Mono",monospace;
-    --sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
-    --serif:Georgia,"Times New Roman",serif;
+    --sans:"Aptos","Inter",-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    --serif:var(--sans);
   }
   *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
   html,body{margin:0;padding:0;}
@@ -39,8 +42,8 @@
   .logo{display:block;margin:22px auto 6px;width:172px;max-width:58%;height:auto;}
   .logo-sm{width:80px;height:auto;display:block;}
 
-  h1{font-family:var(--serif);font-weight:600;font-size:30px;line-height:1.18;margin:16px 0 8px;letter-spacing:-.2px;}
-  h2{font-family:var(--serif);font-weight:600;font-size:22px;margin:0 0 6px;}
+  h1{font-family:var(--serif);font-weight:700;font-size:29px;line-height:1.18;margin:16px 0 8px;letter-spacing:-.6px;}
+  h2{font-family:var(--serif);font-weight:700;font-size:22px;margin:0 0 6px;letter-spacing:-.4px;}
   h3{font-size:14px;margin:0 0 8px;text-transform:uppercase;letter-spacing:1px;color:var(--muted);font-weight:600;}
   p.lede{color:var(--muted);margin:0 0 18px;font-size:15px;}
 
@@ -196,8 +199,8 @@
   .legend i{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:4px;vertical-align:middle;}
 
   table.log{width:100%;border-collapse:collapse;font-size:13px;}
-  table.log th{text-align:left;color:var(--muted);font-weight:600;padding:8px 5px;border-bottom:1px solid var(--line);}
-  table.log td{padding:9px 5px;border-bottom:1px solid var(--line);font-variant-numeric:tabular-nums;}
+  table.log th{text-align:center;color:var(--muted);font-weight:600;padding:8px 5px;border-bottom:1px solid var(--line);}
+  table.log td{text-align:center;padding:9px 5px;border-bottom:1px solid var(--line);font-variant-numeric:tabular-nums;}
   .pill{display:inline-block;width:10px;height:10px;border-radius:50%;}
   .empty{color:var(--muted);text-align:center;padding:28px 10px;font-size:14px;}
 
@@ -352,8 +355,8 @@
     <div class="brandbar"><img class="logo-sm js-logo" alt="Riki"><span class="brandname"><small>your trend</small></span></div>
     <div class="segtog"><button id="tv-range" class="on" onclick="setTrendView('range')">Two weeks</button><button id="tv-day" onclick="setTrendView('day')">By day</button></div>
     <div class="daynav" id="daynav" style="display:none;"><button id="dn-prev" onclick="stepDay(-1)">&#8249;</button><strong id="dn-label"></strong><button id="dn-next" onclick="stepDay(1)">&#8250;</button></div>
-    <h2 style="margin-top:10px;" id="trend-title">The last two weeks</h2>
-    <p class="lede" id="trend-summary"></p>
+    <h2 style="margin-top:10px;text-align:center;" id="trend-title">The last two weeks</h2>
+    <p class="lede" id="trend-summary" style="text-align:center;"></p>
     <div class="chartbox">
       <svg id="chart" viewBox="0 0 420 190" width="100%"></svg>
       <div class="legend">
@@ -1204,22 +1207,22 @@ async function finishSession(){
 
 const BAND_LABEL = {
   baseline:{ green:"In your usual range", amber:"A touch under your usual", amberred:"Under your usual range", red:"Well under your usual range", none:"Not enough data" },
-  absolute:{ green:"A strong session", amber:"A steady session", amberred:"A slower session", red:"A tough session", none:"Not enough data" }
+  absolute:{ green:"A strong check", amber:"A steady check", amberred:"A slower check", red:"A low check", none:"Not enough data" }
 };
 const CALM_MSG = {
-  green:"You're moving in step with your usual self. Nice one, keep doing what you're doing.",
-  amber:"Everyone drifts a little through a day. Nothing dramatic here, just a gentle dip worth knowing about.",
-  amberred:"Today sits a fair way under your usual rhythm. That happens to everyone sometimes, so be kind to yourself.",
-  red:"You seem quite a way below your usual self right now. Riki isn't judging, this is just worth gently noticing. You know your day best.",
-  none:"Not quite enough responses this time to score fairly. No worries at all, another check any time will do it."
+  green:"Right where you usually are. Nice work.",
+  amber:"A little under your usual. Pretty normal over a day.",
+  amberred:"Under your usual today. Worth a short break if you can.",
+  red:"Well under your usual right now. Go easy on yourself, you know your day best.",
+  none:"Not enough responses to score this one. Try another check when you're ready."
 };
 const SUGGESTIONS = [
   "A glass of water",
-  "A couple of minutes of daylight or fresh air",
-  "A short walk, even just along a corridor",
+  "A few minutes of fresh air",
+  "A short walk",
   "A snack if it's been a while",
-  "Resting your eyes for a minute somewhere quiet",
-  "A quick chat with a colleague or friend"
+  "A minute somewhere quiet",
+  "A quick chat with someone"
 ];
 
 function fmtScore(v, band){
@@ -1251,12 +1254,12 @@ function renderResults(res){
 
   // score head
   html += `<div class="scorehead" style="background:${BAND_BG[band]}">
-    <div class="lab">Today's wellness check</div>
+    <div class="lab">Your score</div>
     <div class="num">${res.overall==null?"–":res.overall}</div>
     <div class="bandlab">${label}</div>`;
   if(res.delta!=null){
     const d=Math.round(res.delta);
-    html += `<div class="deltaline">${Math.abs(d)<=2? "In line with your two week average" : (d>0? "+"+d+" on your two week average" : d+" on your two week average")}</div>`;
+    html += `<div class="deltaline">${Math.abs(d)<=2? "Same as your two week average" : (d>0? "+"+d+" vs your two week average" : d+" vs your two week average")}</div>`;
   }
   html += `</div>`;
 
@@ -1264,45 +1267,48 @@ function renderResults(res){
   html += `<div class="card msgcard"><div style="font-size:15px;">${CALM_MSG[band]}</div></div>`;
 
   // calibration / baseline label
-  const quickNote = session.type==="quick" ? " This was a quick check, so it leans mostly on your reaction speed." : "";
+  const quickNote = session.type==="quick" ? " Quick checks lean mostly on reaction speed." : "";
   if(res.mode==="absolute"){
     const done = Math.min(res.sessionsInWindow+1, CFG.BASE.MIN_SESS);
-    html += `<div class="infobox neutral">Getting to know you: ${done} of ${CFG.BASE.MIN_SESS} baseline checks done. Until then, today is compared with typical values rather than your own usual.${quickNote}</div>`;
+    const calib = done>=CFG.BASE.MIN_SESS
+      ? `Check ${done} of ${CFG.BASE.MIN_SESS} done. From your next check, Riki compares you with your own normal.`
+      : `Check ${done} of ${CFG.BASE.MIN_SESS}. After ${CFG.BASE.MIN_SESS} checks, Riki compares you with your own normal. Until then, it uses typical values.`;
+    html += `<div class="infobox neutral">${calib}${quickNote}</div>`;
   } else {
-    const tod = res.usedTime>0 ? " Where you have enough history at this hour, it compares with your usual at this time of day." : "";
-    html += `<div class="infobox neutral">Scored against your own baseline from the last two weeks.${tod}${quickNote}</div>`;
+    const tod = res.usedTime>0 ? " Where there's enough data, it also compares with this time of day." : "";
+    html += `<div class="infobox neutral">Compared with your own last two weeks.${tod}${quickNote}</div>`;
   }
 
   // confidence
   if(res.confidence==="mixed"){
-    html += `<div class="infobox blue">One task carried most of today's dip while the others held steady, so this reading is mixed. If you're curious, another check in a little while would give a clearer picture.</div>`;
+    html += `<div class="infobox blue">One game pulled the score down while the others held steady. Another check later would give a clearer picture.</div>`;
   } else if(res.confidence==="moderate"){
-    html += `<div class="infobox blue">A couple of separate tasks dipped together, so this reading is fairly steady.</div>`;
+    html += `<div class="infobox blue">A couple of games dipped together.</div>`;
   } else if(res.confidence==="consistent"){
-    html += `<div class="infobox pink">Several separate tasks dipped together today, which usually means the reading reflects how you're genuinely running rather than one-off noise.</div>`;
+    html += `<div class="infobox pink">Most games dipped together, so this is likely a fair picture of right now.</div>`;
   }
 
   // suggestions (non-green only, pick and choose framing)
   if(band!=="green" && band!=="none"){
-    html += `<div class="card"><h3>Things others often find helpful</h3>
-      <div class="note" style="margin-top:0;">Take what suits you, skip the rest. Entirely your call.</div>
+    html += `<div class="card"><h3>A few things that can help</h3>
+      <div class="note" style="margin-top:0;">Pick whatever suits you.</div>
       <ul class="sugg">${SUGGESTIONS.map(s=>`<li>${s}</li>`).join("")}</ul></div>`;
   }
 
   // context panel
   const ctx = contextLine(session.checkin);
   if(ctx){
-    html += `<div class="card"><h3>Context you shared</h3>
+    html += `<div class="card"><h3>Your check-in</h3>
       <div style="font-size:14px;">${ctx}</div>
-      <div class="note">Your score reflects how you performed, not what you reported.</div></div>`;
+      <div class="note">For reference only. It doesn't affect your score.</div></div>`;
   }
 
   // per test cards
   const detail = {
     pvt: m=> m? `median ${m.median!=null?m.median+" ms":"–"} · ${m.lapses} slow/missed` : "",
     sdmt: m=> m? `${m.correct} matched · ${m.incorrect} missed` : "",
-    stroop: m=> m? `${Math.round(m.accuracy*100)}% accurate · +${m.interference} ms mix-up cost` : "",
-    nback: m=> m? `${m.hits} of ${m.targets} spotted · ${m.falseAlarms} extra presses` : "",
+    stroop: m=> m? `${Math.round(m.accuracy*100)}% correct` : "",
+    nback: m=> m? `${m.hits} of ${m.targets} spotted · ${m.falseAlarms} wrong taps` : "",
     gng: m=> m? `${m.commissions} tapped on red · ${m.omissions} greens missed` : ""
   };
   html += `<div class="testgrid">`;
@@ -1323,24 +1329,24 @@ function renderResults(res){
   const st = res.channels.stability;
   const mm = session.metrics;
   const pc = v => v==null? "–" : Math.round(v*100)+"%";
-  html += `<div class="card"><h3>Steadiness through the tasks</h3>
+  html += `<div class="card"><h3>Steadiness</h3>
     <div class="stat"><span>Steadiness score</span><span class="v">${st.personal==null?"–":st.personal}</span></div>
-    <div class="stat"><span>Reaction spread (CV)</span><span class="v">${mm.pvt&&mm.pvt.cv!=null? pc(mm.pvt.cv):"–"}</span></div>
+    <div class="stat"><span>Reaction spread</span><span class="v">${mm.pvt&&mm.pvt.cv!=null? pc(mm.pvt.cv):"–"}</span></div>
     <div class="stat"><span>Slowest 10% of taps</span><span class="v">${mm.pvt&&mm.pvt.slow10!=null? mm.pvt.slow10+" ms":"–"}</span></div>
-    <div class="stat"><span>Second half change</span><span class="v">${mm.pvt&&mm.pvt.decline!=null? (mm.pvt.decline>0?"+":"")+Math.round(mm.pvt.decline*100)+"% slower":"steady"}</span></div>
-    <div class="note">Steadiness looks at how even your responses were and whether you faded in the second half. It's often the earliest thing to change when someone is running low.</div></div>`;
+    <div class="stat"><span>Second half</span><span class="v">${mm.pvt&&mm.pvt.decline!=null? (mm.pvt.decline>0?"+":"")+Math.round(mm.pvt.decline*100)+"% slower":"steady"}</span></div>
+    <div class="note">How even your responses were, and whether you slowed down towards the end.</div></div>`;
 
   // trend
   html += `<div class="chartbox"><svg id="chart-r" viewBox="0 0 420 190" width="100%"></svg></div>`;
 
   // optional feedback
-  html += `<div class="card" id="fb-card"><h3>Optional: help us improve Riki</h3>
-    <div class="note" style="margin-top:0;">Completely optional. Answer either, both or neither.</div>
+  html += `<div class="card" id="fb-card"><h3>Optional: help improve Riki</h3>
+    <div class="note" style="margin-top:0;">Answer either, both or neither.</div>
     <div class="fbq">Does this score match how you feel right now?</div>
     <div class="fbopts" data-q="feel"><div class="opt" data-v="right">Feels right</div><div class="opt" data-v="too_high">Seems too high</div><div class="opt" data-v="too_low">Seems too low</div></div>
     <div class="fbq">Have you made any mistake today, even a small one?</div>
     <div class="fbopts" data-q="mistake"><div class="opt" data-v="yes">Yes</div><div class="opt" data-v="no">No</div></div>
-    <div class="note" id="fb-thanks" style="display:none;color:var(--teal);">Thanks, that really helps.</div></div>`;
+    <div class="note" id="fb-thanks" style="display:none;color:var(--teal);">Thanks, that helps.</div></div>`;
 
   $("results-body").innerHTML = html;
   $("results-body").querySelectorAll(".fbopts").forEach(grp=>{
